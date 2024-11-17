@@ -1,6 +1,13 @@
 const API_URL = 'https://api.platform.ai.vn/services/platform-ai-api/v1/chat/completions';
 const LOGIN_URL = 'https://web.rengine.platform.ai.vn/app/login';
 const USER_INFO_URL = 'https://api.platform.ai.vn/services/platform-ai-api/account/info';
+const SUPPORTED_DOC_TYPES = [
+    'application/pdf',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // docx
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // xlsx
+    'application/msword', // doc
+    'application/vnd.ms-excel' // xls
+];
 
 let isProcessing = false;
 let editingAIIndex = null;
@@ -73,6 +80,102 @@ async function saveCustomAI(ai) {
 
 async function deleteCustomAI(id) {
     return await apiCall(`https://api.platform.ai.vn/services/platform-ai-api/contents/${id}`, 'DELETE');
+}
+
+// Function to handle document upload
+async function handleDocumentUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    if (!SUPPORTED_DOC_TYPES.includes(file.type)) {
+        alert('Please upload a supported document file (PDF, DOCX, XLSX, DOC, XLS)');
+        return;
+    }
+
+    try {
+        const base64Document = await fileToBase64(file);
+        // Show loading state in preview area
+        const previewArea = document.getElementById('preview-area');
+        previewArea.innerHTML = `
+            <div class="document-preview">
+                <div class="document-info">
+                    <i class="fas fa-file-alt"></i>
+                    <span>${file.name}</span>
+                </div>
+                <button class="remove-preview" onclick="clearPreviewArea()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        `;
+
+        // Call document parser API
+        const parsedContent = await parseDocument(base64Document);
+        if (parsedContent) {
+            // Store the parsed content to be sent with the next message
+            window.lastParsedDocument = parsedContent;
+        }
+    } catch (error) {
+        console.error('Error processing document:', error);
+        alert('Error processing document');
+        clearPreviewArea();
+    }
+}
+
+// Function to convert file to base64
+function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+            const base64String = reader.result.split(',')[1];
+            resolve(base64String);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
+// Function to parse document using the API
+async function parseDocument(base64Content) {
+    const token = getCookie('access_token');
+    if (!token) {
+        redirectToLogin();
+        return null;
+    }
+
+    try {
+        const response = await fetch('https://api.platform.ai.vn/services/platform-ai-api/scrapings/execute', {
+            method: 'POST',
+            headers: {
+                'accept': 'application/json',
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                scraping_name: "Document Parser",
+                variables: {
+                    content: base64Content
+                }
+            })
+        });
+
+        if (response.status === 401) {
+            redirectToLogin();
+            return null;
+        }
+
+        const result = await response.json();
+        return result;
+    } catch (error) {
+        console.error('Error parsing document:', error);
+        throw error;
+    }
+}
+
+// Function to clear preview area
+function clearPreviewArea() {
+    const previewArea = document.getElementById('preview-area');
+    previewArea.innerHTML = '';
+    window.lastParsedDocument = null;
 }
 
 // Image handling
@@ -560,7 +663,7 @@ async function streamResponse(message, imageBase64) {
                 sanitize: false,
                 highlight: function (code, lang) {
                     const language = hljs.getLanguage(lang) ? lang : 'plaintext';
-                    return hljs.highlight(code, {language}).value;
+                    return hljs.highlight(code, { language }).value;
                 }
             });
             let rendered = marked.parse(markdown);
@@ -575,7 +678,7 @@ async function streamResponse(message, imageBase64) {
         };
 
         while (true) {
-            const {done, value} = await reader.read();
+            const { done, value } = await reader.read();
             if (done) break;
 
             const chunk = decoder.decode(value);
@@ -624,24 +727,40 @@ async function sendMessage() {
     const message = inputField.value.trim();
     const previewArea = document.getElementById('preview-area');
     const imagePreview = previewArea.querySelector('.image-preview');
+    const documentPreview = previewArea.querySelector('.document-preview');
 
-    if ((!message && !imagePreview) || isProcessing) return;
+    if ((!message && !imagePreview && !documentPreview) || isProcessing) return;
 
     if (!checkAuth()) return;
 
     inputField.value = '';
-    inputField.style.height = 'auto'; 
-    previewArea.innerHTML = '';
+    inputField.style.height = 'auto';
     setLoading(true);
 
-    if (imagePreview) {
+    // Handle document preview
+    if (documentPreview && window.lastParsedDocument) {
+        const messageElement = document.createElement('div');
+        messageElement.classList.add('message', 'sent');
+        messageElement.innerHTML = `${message}<br><div class="document-info"><i class="fas fa-file-alt"></i> Document uploaded</div>`;
+        chatArea.appendChild(messageElement);
+        scrollToBottom();
+
+        // Create message with document content
+        const documentMessage = `${message}\n\nDocument Content:\n${window.lastParsedDocument}`;
+        await streamResponse(documentMessage);
+
+        // Clear preview and parsed content
+        clearPreviewArea();
+    } else if (imagePreview) {
+        // Existing image handling code
         const messageElement = document.createElement('div');
         messageElement.classList.add('message', 'sent');
         messageElement.innerHTML = `${message || currentAI.defaultText}<br><img src="${imagePreview.src}" alt="Uploaded image">`;
         chatArea.appendChild(messageElement);
-        scrollToBottom()
+        scrollToBottom();
 
         await streamResponse(message, imagePreview.src);
+        previewArea.innerHTML = '';
     } else {
         displayMessage(message, true);
         await streamResponse(message);
@@ -740,9 +859,25 @@ document.addEventListener('DOMContentLoaded', async () => {
         sanitize: false,
         highlight: function (code, lang) {
             const language = hljs.getLanguage(lang) ? lang : 'plaintext';
-            return hljs.highlight(code, {language}).value;
+            return hljs.highlight(code, { language }).value;
         }
     });
+    // Add document upload input to HTML
+    const uploadLabel = document.querySelector('.upload-btn');
+    const documentUploadInput = document.createElement('input');
+    documentUploadInput.type = 'file';
+    documentUploadInput.id = 'document-upload';
+    documentUploadInput.accept = '.pdf,.docx,.xlsx,.doc,.xls';
+    documentUploadInput.style.display = 'none';
+    uploadLabel.appendChild(documentUploadInput);
+
+    // Add document icon
+    const documentIcon = document.createElement('i');
+    documentIcon.className = 'fas fa-file-alt ms-2';
+    uploadLabel.appendChild(documentIcon);
+
+    // Add event listener for document upload
+    documentUploadInput.addEventListener('change', handleDocumentUpload);
     await fetchUserInfo();
     updateChatHeader();
     loadChatHistory();
@@ -753,7 +888,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         this.style.height = (this.scrollHeight) + 'px';
     }
 
-    inputField.addEventListener('keydown', function(event) {
+    inputField.addEventListener('keydown', function (event) {
         if (event.key === 'Enter' && !event.shiftKey) {
             event.preventDefault();
             sendMessage();
