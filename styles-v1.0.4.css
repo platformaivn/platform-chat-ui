@@ -623,3 +623,16 @@ body.light-theme {
 .upload-btn i.fa-file-alt {
     margin-left: 8px;
 }
+
+.document-preview .remove-preview {
+    background: none;
+    border: none;
+    color: #ef4444;
+    cursor: pointer;
+    margin-left: 0.5rem;
+    font-size: 1.2rem;
+}
+
+.document-preview .remove-preview:hover {
+    color: #dc2626;
+}
