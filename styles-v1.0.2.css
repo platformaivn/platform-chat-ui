@@ -352,7 +352,7 @@ body {
     border-radius: 0.5rem;
     width: 95%;
     max-width: 95%;
-    max-height: 80vh;
+    max-height: 90vh;
     overflow-y: auto;
     scrollbar-width: thin;
     scrollbar-color: var(--border-color) var(--chat-bg);
