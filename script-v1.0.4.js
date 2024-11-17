@@ -746,7 +746,7 @@ async function sendMessage() {
         scrollToBottom();
 
         // Create message with document content
-        const documentMessage = `${message}\n\nDocument Content:\n${window.lastParsedDocument}`;
+        const documentMessage = `${message}\n\nDocument Content:\n${window.lastParsedDocument.text}`;
         await streamResponse(documentMessage);
 
         // Clear preview and parsed content
@@ -863,7 +863,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
     // Add document upload input to HTML
-    const uploadLabel = document.querySelector('.upload-btn');
+    const inputContainer = document.querySelector('.input-container');
+    const uploadLabel = document.createElement('label');
+    uploadLabel.class = 'upload-btn';
     const documentUploadInput = document.createElement('input');
     documentUploadInput.type = 'file';
     documentUploadInput.id = 'document-upload';
@@ -875,6 +877,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const documentIcon = document.createElement('i');
     documentIcon.className = 'fas fa-file-alt ms-2';
     uploadLabel.appendChild(documentIcon);
+
+    inputContainer.appendChild(uploadLabel);
 
     // Add event listener for document upload
     documentUploadInput.addEventListener('change', handleDocumentUpload);
