@@ -865,7 +865,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Add document upload input to HTML
     const inputContainer = document.querySelector('.input-container');
     const uploadLabel = document.createElement('label');
-    uploadLabel.class = 'upload-btn';
+    uploadLabel.className  = 'upload-btn';
     const documentUploadInput = document.createElement('input');
     documentUploadInput.type = 'file';
     documentUploadInput.id = 'document-upload';
@@ -878,7 +878,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     documentIcon.className = 'fas fa-file-alt ms-2';
     uploadLabel.appendChild(documentIcon);
 
-    inputContainer.appendChild(uploadLabel);
+    inputContainer.insertBefore(uploadLabel, inputContainer.firstChild);
 
     // Add event listener for document upload
     documentUploadInput.addEventListener('change', handleDocumentUpload);
