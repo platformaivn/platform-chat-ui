@@ -725,7 +725,14 @@ async function streamResponse(message, imageBase64) {
             content: fullResponse
         });
         saveChatHistory();
-        copyToClipboard(fullResponse);
+
+        if (bridge) {
+            bridge.receive_message(fullResponse);
+        }
+        else
+        {
+            copyToClipboard(fullResponse);
+        }
 
         const notificationElement = document.createElement('div');
         notificationElement.classList.add('notification');
