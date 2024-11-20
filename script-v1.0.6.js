@@ -687,7 +687,7 @@ async function streamResponse(message, imageBase64) {
             for (const line of lines) {
                 if (line.startsWith('data: ')) {
                     const data = line.slice(6);
-                    if (data === '[DONE]') continue;
+                    if (data === '[DONE]\r') continue;
 
                     try {
                         const json = JSON.parse(data);
