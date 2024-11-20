@@ -503,6 +503,14 @@ function handleLoginReturn() {
     }
 }
 
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        console.log('Text copied to clipboard');
+    }).catch(err => {
+        console.error('Error copying text: ', err);
+    });
+}
+
 // Message display functions
 function displayMessage(message, isSent) {
     const messageElement = document.createElement('div');
@@ -715,6 +723,16 @@ async function streamResponse(message, imageBase64) {
             content: fullResponse
         });
         saveChatHistory();
+        copyToClipboard(fullResponse);
+
+        const notificationElement = document.createElement('div');
+        notificationElement.classList.add('notification');
+        notificationElement.textContent = 'Response copied to clipboard!';
+        document.body.appendChild(notificationElement);
+        
+        setTimeout(() => {
+            document.body.removeChild(notificationElement);
+        }, 3000);
     } catch (error) {
         console.error('Error:', error);
         displayMessage('Sorry, there was an error processing your request.', false);
