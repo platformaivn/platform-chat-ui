@@ -734,14 +734,14 @@ async function streamResponse(message, imageBase64) {
             copyToClipboard(fullResponse);
         }
 
-        const notificationElement = document.createElement('div');
-        notificationElement.classList.add('notification');
-        notificationElement.textContent = 'Response copied to clipboard!';
-        document.body.appendChild(notificationElement);
+        // const notificationElement = document.createElement('div');
+        // notificationElement.classList.add('notification');
+        // notificationElement.textContent = 'Response copied to clipboard!';
+        // document.body.appendChild(notificationElement);
         
-        setTimeout(() => {
-            document.body.removeChild(notificationElement);
-        }, 3000);
+        // setTimeout(() => {
+        //     document.body.removeChild(notificationElement);
+        // }, 3000);
     } catch (error) {
         console.error('Error:', error);
         displayMessage('Sorry, there was an error processing your request.', false);
