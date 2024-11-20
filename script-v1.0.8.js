@@ -503,12 +503,14 @@ function handleLoginReturn() {
     }
 }
 
-function copyToClipboard(text) {
-    navigator.clipboard.writeText(text).then(() => {
-        console.log('Text copied to clipboard');
-    }).catch(err => {
-        console.error('Error copying text: ', err);
-    });
+
+function copyToClipboard(textToCopy) {
+    var tempInput = document.createElement("input");
+    tempInput.value = textToCopy;
+    document.body.appendChild(tempInput);
+    tempInput.select();
+    document.execCommand("copy");
+    document.body.removeChild(tempInput);
 }
 
 // Message display functions
