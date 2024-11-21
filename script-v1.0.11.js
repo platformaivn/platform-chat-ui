@@ -10,7 +10,7 @@ const SUPPORTED_DOC_TYPES = [
 ];
 
 let isProcessing = false;
-let editingAIIndex = null;
+let editingAIId = null;
 let currentAI = null;
 let currentDataAI = null;
 let customAIs = [];
@@ -355,15 +355,19 @@ function clearChatHistory() {
 
 // Custom AI management
 function addNewAI() {
-    editingAIIndex = null;
+    editingAIId = null;
     document.getElementById('aiConfigLabel').innerHTML = `AI Configuration (New)`;
     document.getElementById('aiForm').reset();
 }
 
-async function showAIList() {
-    const popup = document.getElementById('aiPopup');
+async function loadAIList() {
     customAIs = await getCustomAIs();
     displayAIList(customAIs);
+}
+
+async function showAIList() {
+    const popup = document.getElementById('aiPopup');
+    await loadAIList();
     popup.style.display = 'flex';
 }
 
@@ -384,22 +388,19 @@ async function saveAI(event) {
         maxHistory: parseInt(document.getElementById('aiMaxHistory').value)
     };
 
-    if (editingAIIndex !== null) {
-        ai.id = customAIs[editingAIIndex].id;
+    if (editingAIId !== null) {
+        ai.id = editingAIId;
     }
 
     const savedAI = await saveCustomAI(ai);
     if (savedAI) {
-        await showAIList();
-        if (editingAIIndex !== null) {
-            selectAI(editingAIIndex);
-        }
+        selectAI(savedAI.id);
         closeAIPopup();
     }
 }
 
-async function editAI(index) {
-    const aiData = await getCustomAI(customAIs[index].id);
+async function editAI(id) {
+    const aiData = await getCustomAI(id);
     const ai = JSON.parse(aiData.content_data);
     document.getElementById('aiName').value = ai.name;
     document.getElementById('aiModel').value = ai.model;
@@ -410,21 +411,21 @@ async function editAI(index) {
     document.getElementById('aiTopP').value = ai.topP;
     document.getElementById('aiMaxHistory').value = ai.maxHistory;
     document.getElementById('aiConfigLabel').innerHTML = `AI Configuration (${ai.name})`;
-    editingAIIndex = index;
+    editingAIId = id;
 }
 
-async function deleteAI(index) {
-    await deleteCustomAI(customAIs[index].id);
-    await showAIList();
+async function deleteAI(id) {
+    await deleteCustomAI(id);
+    await loadAIList();
 }
 
-async function selectAI(index) {
-    const aiData = await getCustomAI(customAIs[index].id);
+async function selectAI(id) {
+    const aiData = await getCustomAI(id);
     currentDataAI = aiData;
     currentAI = JSON.parse(aiData.content_data);
     localStorage.setItem('selectedAI', JSON.stringify(currentDataAI));
     document.querySelector('.custom-ai-name').textContent = `Chat with ${currentAI.name}`;
-    showAIList();
+    await loadAIList();
 }
 
 function searchAI() {
@@ -437,19 +438,19 @@ function displayAIList(ais) {
     const aiList = document.getElementById('aiList');
     aiList.innerHTML = '';
 
-    ais.forEach((ai, index) => {
+    ais.forEach((ai) => {
         const aiItem = document.createElement('div');
         aiItem.classList.add('ai-item');
         if (currentDataAI && currentDataAI.id === ai.id) {
             aiItem.classList.add('selected');
-            editAI(index);
+            editAI(ai.id);
         }
         aiItem.innerHTML = `
             <span>${ai.title}</span>
             <div class="ai-item-buttons">
-                <button class="btn btn-sm btn-primary" onclick="editAI(${index})">Edit</button>
-                <button class="btn btn-sm btn-danger" onclick="deleteAI(${index})">Delete</button>
-                <button class="btn btn-sm btn-success" onclick="selectAI(${index})">Select</button>
+                <button class="btn btn-sm btn-primary" onclick="editAI('${ai.id}')">Edit</button>
+                <button class="btn btn-sm btn-danger" onclick="deleteAI('${ai.id}')">Delete</button>
+                <button class="btn btn-sm btn-success" onclick="selectAI('${ai.id}')">Select</button>
             </div>
         `;
         aiList.appendChild(aiItem);
@@ -729,8 +730,7 @@ async function streamResponse(message, imageBase64) {
         if (bridge) {
             bridge.receive_message(fullResponse);
         }
-        else
-        {
+        else {
             copyToClipboard(fullResponse);
         }
 
@@ -738,7 +738,7 @@ async function streamResponse(message, imageBase64) {
         // notificationElement.classList.add('notification');
         // notificationElement.textContent = 'Response copied to clipboard!';
         // document.body.appendChild(notificationElement);
-        
+
         // setTimeout(() => {
         //     document.body.removeChild(notificationElement);
         // }, 3000);
@@ -892,7 +892,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Add document upload input to HTML
     const inputContainer = document.querySelector('.input-container');
     const uploadLabel = document.createElement('label');
-    uploadLabel.className  = 'upload-btn';
+    uploadLabel.className = 'upload-btn';
     const documentUploadInput = document.createElement('input');
     documentUploadInput.type = 'file';
     documentUploadInput.id = 'document-upload';
